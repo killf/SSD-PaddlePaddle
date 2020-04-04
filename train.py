@@ -1,8 +1,8 @@
 import os
 
-import paddle.fluid as fluid
-import paddle
 import numpy as np
+import paddle.fluid as fluid
+from visualdl import LogWriter
 
 from yolact import Yolact
 from loss import YolactLoss
@@ -11,8 +11,17 @@ from data.parallel import DataLoader
 from utils.augmentations import SSDAugmentation
 from config import cfg
 
+logdir = "./out/log"
+logger = LogWriter(logdir, sync_cycle=3000)
 
-def test():
+# mark the components with 'train' label.
+with logger.mode("train"):
+    loc_loss_logger = logger.scalar("scalars/loc_loss")
+    conf_loss_logger = logger.scalar("scalars/conf_loss")
+    total_loss_logger = logger.scalar("scalars/total_loss")
+
+
+def main():
     with fluid.dygraph.guard():
         # 1.加载数据集
         train_data = COCODetection(image_path=cfg.train_images,
@@ -42,6 +51,8 @@ def test():
         total_step = 0
         for epoch in range(cfg.epochs):
             for step, data in enumerate(data_loader):
+                total_step += 1
+
                 image = np.stack(data[0])
                 image = np.transpose(image, [0, 3, 1, 2])
                 image = fluid.dygraph.to_variable(image)
@@ -53,14 +64,17 @@ def test():
                 optimizer.minimize(total_loss)
                 yolact.clear_gradients()
 
+                loc_loss_logger.add_record(total_step, loc_loss.numpy())
+                conf_loss_logger.add_record(total_step, conf_loss.numpy())
+                total_loss_logger.add_record(total_step, total_loss.numpy())
+
                 print("epoch: {}, step: {}, loc_loss={}, conf_loss={}, total_loss={}".format(
                     epoch, step, loc_loss.numpy(), conf_loss.numpy(), total_loss.numpy()))
 
-                total_step += 1
                 if total_step % 100 == 0:
                     fluid.dygraph.save_dygraph(yolact.state_dict(), cfg.model_file)
                     fluid.dygraph.save_dygraph(optimizer.state_dict(), cfg.model_file)
 
 
 if __name__ == '__main__':
-    test()
+    main()
