@@ -92,6 +92,9 @@ class COCODetection:
     def __len__(self):
         return len(self.ids) // self.batch_size
 
+    def shuffle(self):
+        np.random.shuffle(self.ids)
+
     def pull_item(self, index):
         """
         Args:

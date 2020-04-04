@@ -19,6 +19,9 @@ class DataLoader:
 
     def __iter__(self):
         def sample_generator(generator, r, w, count):
+            if self.shuffle and hasattr(generator, "shuffle"):
+                generator.shuffle()
+
             for item in generator:
                 while count.value >= self.maxsize:
                     time.sleep(0.02)

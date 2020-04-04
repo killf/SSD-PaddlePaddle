@@ -110,7 +110,8 @@ class YolactLoss(object):
         neg_gt = fluid.layers.gather(gt_cls, neg_indices)
 
         # # apply softmax on the pred_cls
-        _, neg_minus_log_class0_sort = fluid.layers.argsort(neg_pred_cls[:, 0])
+        neg_pred_cls_softmax = fluid.layers.softmax(neg_pred_cls)
+        _, neg_minus_log_class0_sort = fluid.layers.argsort(neg_pred_cls_softmax[:, 0], descending=False)
 
         # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
         neg_indices_for_loss = neg_minus_log_class0_sort[:num_neg_needed]
