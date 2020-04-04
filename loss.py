@@ -4,11 +4,13 @@ from config import cfg
 import numpy as np
 import cv2
 
+from models.common import focal_loss
+
 
 class YolactLoss(object):
     def __init__(self, loss_weight_cls=1,
                  loss_weight_box=1.5,
-                 neg_pos_ratio=3,
+                 neg_pos_ratio=1,
                  max_masks_for_train=100):
         self._loss_weight_cls = loss_weight_cls
         self._loss_weight_box = loss_weight_box
@@ -111,7 +113,7 @@ class YolactLoss(object):
 
         # # apply softmax on the pred_cls
         neg_pred_cls_softmax = fluid.layers.softmax(neg_pred_cls)
-        _, neg_minus_log_class0_sort = fluid.layers.argsort(neg_pred_cls_softmax[:, 0], descending=False)
+        _, neg_minus_log_class0_sort = fluid.layers.argsort(neg_pred_cls_softmax[:, 0], descending=True)
 
         # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
         neg_indices_for_loss = neg_minus_log_class0_sort[:num_neg_needed]
@@ -122,10 +124,21 @@ class YolactLoss(object):
 
         # calculate Cross entropy loss and return
         # concat positive and negtive data
-        target_logits = fluid.layers.concat([pos_pred_cls, neg_pred_cls_for_loss], axis=0)
-        target_labels = fluid.layers.cast(fluid.layers.concat([pos_gt, neg_gt_for_loss], axis=0), "int64")
+        # target_logits = fluid.layers.concat([pos_pred_cls, neg_pred_cls_for_loss], axis=0)
+        # target_labels = fluid.layers.cast(fluid.layers.concat([pos_gt, neg_gt_for_loss], axis=0), "int64")
+        #
+        # loss_conf, target_logits_softmax = fluid.layers.softmax_with_cross_entropy(label=target_labels,
+        #                                                                            logits=target_logits,
+        #                                                                            return_softmax=True)
 
-        loss_conf = fluid.layers.softmax_with_cross_entropy(label=target_labels, logits=target_logits)
+        loss_conf, target_logits_softmax = fluid.layers.softmax_with_cross_entropy(label=pos_gt,
+                                                                                   logits=pos_pred_cls,
+                                                                                   return_softmax=True)
+
         loss_conf = fluid.layers.reduce_mean(loss_conf)
+
+        pos_gt_np = pos_gt.numpy()
+        if pos_gt_np.min() == 0 or pos_gt_np.max() >= num_cls:
+            print()
 
         return loss_conf

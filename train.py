@@ -41,6 +41,10 @@ def main():
         optimizer = fluid.optimizer.Adam(learning_rate=0.001,
                                          regularization=fluid.regularizer.L2Decay(cfg.weight_decay),
                                          parameter_list=yolact.parameters())
+        # optimizer = fluid.optimizer.Momentum(learning_rate=0.001,
+        #                                      momentum=0.8,
+        #                                      regularization=fluid.regularizer.L2Decay(cfg.weight_decay),
+        #                                      parameter_list=yolact.parameters())
 
         if os.path.exists(cfg.model_file + ".pdparams") and os.path.exists(cfg.model_file + ".pdopt"):
             para_state_dict, opti_state_dict = fluid.dygraph.load_dygraph(cfg.model_file)
